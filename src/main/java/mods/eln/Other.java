@@ -8,6 +8,7 @@ public class Other {
     public static boolean ocLoaded = false;
     public static boolean ccLoaded = false;
     public static boolean teLoaded = false;
+    public static boolean tfcplusLoaded = false;
 
     public static double wattsToEu;
     public static double wattsToOC;
@@ -17,12 +18,14 @@ public class Other {
     public static final String modIdOc = "OpenComputers";
     public static final String modIdTe = "Eln";
     public static final String modIdCc = "ComputerCraft";
+    public static  final String modIdTfcplus = "terrafirmacraftplus";
 
     public static void check() {
         ic2Loaded = Loader.isModLoaded(modIdIc2);
         ocLoaded = Loader.isModLoaded(modIdOc);
         ccLoaded = Loader.isModLoaded(modIdCc);
         teLoaded = Loader.isModLoaded(modIdTe);
+        tfcplusLoaded = Loader.isModLoaded(modIdTfcplus);
     }
 
     public static double getWattsToEu() {
