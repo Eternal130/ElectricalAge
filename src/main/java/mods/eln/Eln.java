@@ -1,5 +1,6 @@
 package mods.eln;
 
+import com.dunk.tfc.api.TFCBlocks;
 import cpw.mods.fml.common.*;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.Mod.Instance;
@@ -567,6 +568,19 @@ Side.SERVER);
 
         oreScannerConfig.clear();
 
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.coal_ore), 5 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.iron_ore), 15 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.gold_ore), 40 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.lapis_ore), 40 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.redstone_ore), 40 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.diamond_ore), 100 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.emerald_ore), 40 / 100f));
+
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (1 << 12), 10 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (4 << 12), 20 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (5 << 12), 20 / 100f));
+        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (6 << 12), 20 / 100f));
+
         if (addOtherModOreToXRay) {
             for (String name : OreDictionary.getOreNames()) {
                 if (name == null) continue;
@@ -588,20 +602,24 @@ Side.SERVER);
                     }
                 }
             }
+            if(Other.tfcplusLoaded){
+                oreScannerConfig.removeIf(c -> c.getBlockKey() == 4264);//remove key of oreNormalOres like oreNormalCopper, because they are useless
+                oreScannerConfig.removeIf(c -> c.getBlockKey() == 4265);//remove key of oreSmallOres like oreSmallCopper, because they  will be misinterpreted as stones
+//            I don't know if these↑ are useful in any modpack which contains tfc+
+//                these↓ are all ores in tfc+
+                for(int i=0;i<16;i++){
+                    oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore) + (i << 12), 1f));
+                    oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore2) + (i << 12), 1f));
+                }
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore1b), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore1b) + (1 << 12), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3) + (1 << 12), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3) + (2 << 12), 1f));
+//                they are useful, perhaps also in tfc
+            }
         }
 
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.coal_ore), 5 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.iron_ore), 15 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.gold_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.lapis_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.redstone_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.diamond_ore), 100 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.emerald_ore), 40 / 100f));
-
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (1 << 12), 10 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (4 << 12), 20 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (5 << 12), 20 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (6 << 12), 20 / 100f));
     }
 
     @SubscribeEvent

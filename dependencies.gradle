@@ -44,4 +44,5 @@ dependencies {
     compileOnly "ic2:IC2Classic:1.2.1.8:dev"
     compileOnly "li.cil.oc:OpenComputers:MC1.7.10-1.7.2.1204:dev"
     compileOnly "dan200.computercraft:ComputerCraft:1.75"
+    compileOnly files("libs/[1.7.10]TerraFirmaCraftPlus-deobf-0.89.1.jar")
 }
