@@ -1,5 +1,6 @@
 package mods.eln;
 
+import com.dunk.tfc.api.TFCBlocks;
 import cpw.mods.fml.common.*;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.Mod.Instance;
@@ -600,6 +601,22 @@ Side.SERVER);
                         }
                     }
                 }
+            }
+            if(Other.tfcplusLoaded){
+                oreScannerConfig.removeIf(c -> c.getBlockKey() == 4264);//remove key of oreNormalOres like oreNormalCopper, because they are useless
+                oreScannerConfig.removeIf(c -> c.getBlockKey() == 4265);//remove key of oreSmallOres like oreSmallCopper, because they  will be misinterpreted as stones
+//            I don't know if these↑ are useful in any modpack which contains tfc+
+//                these↓ are all ores in tfc+
+                for(int i=0;i<16;i++){
+                    oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore) + (i << 12), 1f));
+                    oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore2) + (i << 12), 1f));
+                }
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore1b), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore1b) + (1 << 12), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3) + (1 << 12), 1f));
+                oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(TFCBlocks.ore3) + (2 << 12), 1f));
+//                they are useful, perhaps also in tfc
             }
         }
 
