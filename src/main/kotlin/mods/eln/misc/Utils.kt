@@ -1,6 +1,7 @@
 @file:Suppress("NAME_SHADOWING")
 package mods.eln.misc
 
+import com.dunk.tfc.api.TFCBlocks
 import mods.eln.Eln
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.util.MathHelper
@@ -1100,7 +1101,7 @@ object Utils {
     @JvmStatic
     fun isWater(waterCoord: Coordinate): Boolean {
         val block = waterCoord.block
-        return block === Blocks.flowing_water || block === Blocks.water
+        return block === Blocks.flowing_water || block === Blocks.water || block === TFCBlocks.freshWater || block === TFCBlocks.freshWaterStationary || block === TFCBlocks.saltWater || block === TFCBlocks.saltWaterStationary
     }
 
     @JvmStatic
