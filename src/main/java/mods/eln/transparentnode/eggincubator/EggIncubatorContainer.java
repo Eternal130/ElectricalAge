@@ -1,5 +1,6 @@
 package mods.eln.transparentnode.eggincubator;
 
+import com.dunk.tfc.api.TFCItems;
 import mods.eln.gui.ISlotSkin.SlotSkin;
 import mods.eln.gui.ItemStackFilter;
 import mods.eln.gui.SlotFilter;
@@ -22,7 +23,7 @@ public class EggIncubatorContainer extends BasicContainer implements INodeContai
     public EggIncubatorContainer(EntityPlayer player, IInventory inventory, Node node) {
         super(player, inventory, new Slot[]{
             new SlotFilter(inventory, EggSlotId, 176 / 2 - 8, 7, 64,
-                new ItemStackFilter[]{new ItemStackFilter(Items.egg)},
+                new ItemStackFilter[]{new ItemStackFilter(Items.egg), new ItemStackFilter(TFCItems.egg, new String[]{"Fertilized"})},
                 SlotSkin.medium, new String[]{tr("Egg slot")})
             //	new SlotFilter(inventory, 1, 62 + 18, 17, 1, new ItemStackFilter[]{new ItemStackFilter(Eln.sixNodeBlock, 0xFF, Eln.electricalCableId)})
         });
