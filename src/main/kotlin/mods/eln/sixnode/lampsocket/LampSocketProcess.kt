@@ -1,6 +1,9 @@
 package mods.eln.sixnode.lampsocket
 
+import com.dunk.tfc.Food.CropManager
+import com.dunk.tfc.api.TFCBlocks
 import mods.eln.Eln
+import mods.eln.Other
 import mods.eln.generic.GenericItemUsingDamage
 import mods.eln.item.LampDescriptor
 import mods.eln.misc.Coordinate
@@ -76,8 +79,19 @@ class LampSocketProcess(var lamp: LampSocketElement) : IProcess, INBTTReady /*,L
                     break
                 }
             }
-            if (!exit && c.block !== Blocks.air)
+            if (!exit && c.block !== Blocks.air){
                 c.block.updateTick(c.world(), c.x, c.y, c.z, c.world().rand)
+                if(Other.tfcplusLoaded && c.block === TFCBlocks.crops){
+                    val nbt = NBTTagCompound()
+                    c.tileEntity?.writeToNBT(nbt)
+                    val crop = CropManager.getInstance().getCropFromId(nbt.getInteger("cropId"))
+                    if(nbt.getFloat("growth") < crop.numGrowthStages)
+                        nbt.setFloat("growth",nbt.getFloat("growth") + 0.0001f)
+//                    nbt.setLong("growthTimer",nbt.getLong("growthTimer") - 10000)
+                    c.tileEntity?.readFromNBT(nbt)
+                    c.tileEntity?.updateEntity()
+                }
+            }
         }
     }
 
