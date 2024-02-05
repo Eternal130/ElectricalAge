@@ -1,6 +1,9 @@
 package mods.eln.transparentnode.eggincubator;
 
+import com.dunk.tfc.Entities.Mobs.EntityChickenTFC;
+import com.dunk.tfc.api.TFCItems;
 import mods.eln.Eln;
+import mods.eln.Other;
 import mods.eln.i18n.I18N;
 import mods.eln.misc.Direction;
 import mods.eln.misc.INBTTReady;
@@ -75,9 +78,13 @@ public class EggIncubatorElement extends TransparentNodeElement {
             if (inventory.getStackInSlot(EggIncubatorContainer.EggSlotId) != null) {
                 descriptor.setState(powerResistor, true);
                 if (energy <= 0) {
+                    EntityChicken chicken;
+                    if(Other.tfcplusLoaded && inventory.getStackInSlot(EggIncubatorContainer.EggSlotId).getItem() == TFCItems.egg && inventory.getStackInSlot(EggIncubatorContainer.EggSlotId).getTagCompound().hasKey("Fertilized"))
+                        chicken = new EntityChickenTFC(node.coordinate.world(), node.coordinate.x, node.coordinate.y, node.coordinate.z,
+                                (NBTTagCompound)inventory.getStackInSlot(EggIncubatorContainer.EggSlotId).getTagCompound().getTag("Genes"));
+                    else
+                        chicken = new EntityChicken(node.coordinate.world());
                     inventory.decrStackSize(EggIncubatorContainer.EggSlotId, 1);
-                    EntityChicken chicken = new EntityChicken(node.coordinate.world());
-                    chicken.setGrowingAge(-24000);
                     EntityLiving entityliving = (EntityLiving) chicken;
                     entityliving.setLocationAndAngles(node.coordinate.x + 0.5, node.coordinate.y + 0.5, node.coordinate.z + 0.5, MathHelper.wrapAngleTo180_float(node.coordinate.world().rand.nextFloat() * 360.0F), 0.0F);
                     entityliving.rotationYawHead = entityliving.rotationYaw;
