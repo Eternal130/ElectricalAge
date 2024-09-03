@@ -86,7 +86,7 @@ public abstract class GuiContainerEln extends GuiContainer implements IGuiObject
     @Override
     protected void keyTyped(char key, int code) {
         helper.keyTyped(key, code);
-        if (code == Keyboard.KEY_ESCAPE) {
+        if (code == Keyboard.KEY_ESCAPE || code == this.mc.gameSettings.keyBindInventory.getKeyCode()) {
             super.keyTyped(key, code);
         }
     }
