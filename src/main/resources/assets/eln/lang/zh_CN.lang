@@ -1165,7 +1165,7 @@ White_Brush.name=刷子(白)
 Wire_Scraps.name=导线废料
 Wire_Snips.name=剪线钳
 Wireless_Analyser.name=无线分析仪
-Wound_Wire_Bundle.name=绕组导线
+Wound_Wire_Bundle.name=成束导线
 Wrench.name=扳手
 X-Ray_Scanner.name=扫描仪
 Yellow_Brush.name=刷子(黄)
@@ -1947,7 +1947,7 @@ This_variable_DC/DC_has_unrealistic_capacitance_effects_and_can_sink/source_powe
 %1$_kg=%1$ kg
 Bare_Wire_or_Bundle_Input=裸线或线束输入
 Buffer\:_%1$_kg_%2$=缓冲区: %1$ kg %2$
-Builds_wound_bundles_for_later_insulation=制作绕组以供后续绝缘
+Builds_wound_bundles_for_later_insulation=将导线绞合成束，以便后续绝缘处理
 Input_1=输入1
 Input_2=输入2
 Input_3=输入3
@@ -1968,7 +1968,7 @@ Rolled_Bare_Wire=轧制裸线
 Rubber_Insulation_Input=橡胶绝缘输入
 Target_Length=目标长度
 Target_length_in_meters=目标长度(米)
-Wound_Bundle_Output=绕组线束输出
+Wound_Bundle_Output=成束导线输出
 
 # src/main/kotlin/mods/eln/transparentnode/battery/BatteryDescriptor.kt
 Actual_charge\:_=实际电量:
