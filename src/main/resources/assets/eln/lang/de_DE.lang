@@ -6,12 +6,14 @@
 (Increases_inductance)=(Erhöht die Induktivität)
 *_Missing_an_inductive_voltage_spike_on_field_collapse=* Fehlende induktive Spannungsspitze bei Feldkollaps
 A_relay_is_an_electrical\ncontact_that_conducts\ncurrent_when_a_signal\nvoltage_is_applied.=Ein Relais ist ein elektrischer\nKontakt, der Strom leitet,\nwenn eine Signal-\nspannung angelegt wird.
+Accepted_lamp_types\:_%1$=Accepted lamp types: %1$
 Acts_like_a\npush_button.=Verhält sich wie ein\nTaster.
 Acts_like_a\ntoggle_switch.=Verhält sich wie ein\nSchalter.
 Bad=Schlecht
 Battery_level=Batteriestand
 Biggest=Größter
 Booster_slot=Booster-Slot
+Cable_slot=Kabel-Slot
 Can_create\:=Kann erstellen:
 Capacity=Kapazität
 Capacity\:_%1$F=Kapazität: %1$F
@@ -21,6 +23,7 @@ Charge=Ladung
 Charge_power=Ladeleistung
 Charge_power\:_%1$W=Ladeleistung: %1$W
 Closed=Geschlossen
+Condition\:_%1$=Condition: %1$
 Connected=Verbunden
 Control=Steuerung
 Converts_%1$_into_mechanical_energy.=Wandelt %1$ in mechanische Energie um.
@@ -61,8 +64,8 @@ Is_on=Ist an
 It_doesn't_really_behave_well_for_DC=Es verhält sich bei Gleichstrom nicht richtig gut
 It_is_made_this_way_to_improve_the_performance_of_the_simulator_in_large_power_networks=Dies ist so gestaltet, um die Leistung des Simulators in großen Stromnetzen zu verbessern
 It_should_require_power_to_transmit_realistically=Erfordert realistisch Leistung zur Übertragung
+Lamp_Brightness=Lamp Brightness
 Length_(m)=Length (m)
-Life_Left=Lebensdauer
 MQTT_server=MQTT-Server
 Material\:_%1$=Material: %1$
 Max._temperature\:_%1$°C=Max. Temperatur: %1$°C
@@ -98,10 +101,10 @@ Portable_battery_slot=Tragbarer Batterie-Slot
 Position=Position
 Power=Leistung
 Power\:_%1$W=Leistung: %1$W
+Power_Consumption=Leistungsverbrauch
 Power_consumption=Leistungsverbrauch
 Power_out\:_%1$-_%2$=Leistung aus: %1$- %2$
 Power_sourced=Leistungsquelle
-Powered_by_Lamp_Supply=Betrieben über Lampenversorgung
 Powered_by_cable=Betrieben über Kabel
 Produced_power=Erzeugte Leistung
 Range\:_%1$_blocks=Reichweite: %1$ Blöcke
@@ -118,7 +121,6 @@ Serial_resistance\:_%1$Ω=Serienwiderstand: %1$Ω
 Signal=Signal
 Smallest=Kleinster
 Specify_the_channel=Kanal angeben
-Specify_the_supply_channel=Versorgungskanal angeben
 Speed=Geschwindigkeit
 State=Status
 Stored_energy\:_%1$J_(%2$%)=Gespeicherte Energie: %1$J (%2$%)
@@ -145,6 +147,7 @@ Voltages=Spannungen
 Write=Schreiben
 Yes=Ja
 You_can't_place_this_block_at_this_side=Du kannst diesen Block nicht an dieser Seite platzieren
+_Hours= Stunden
 _O\:_= O:
 __*_Wire_resistance_is_much_higher_than_normal=  * Der Drahtwiderstand ist viel höher als normal
 __*_Wire_resistance_is_not_impacted_by_temperature=  * Der Drahtwiderstand wird nicht durch die Temperatur beeinflusst
@@ -443,22 +446,8 @@ Provides_a_zero_volt_reference.=Liefert eine Nullvolt-Referenz.
 A_bit_contrived,_as_the_wires_could_just_cross_over_each_other._Realism_depends_on_the_wires_used.=Etwas konstruiert, da die Leitungen auch einfach übereinander kreuzen könnten. Der Realismus hängt von den verwendeten Leitungen ab.
 Allows_crossing_cables\non_one_single_block.=Erlaubt die Kreuzung von Kabeln\nin einem einzigen Block.
 
-# src/main/java/mods/eln/sixnode/lampsocket/LampSocketDescriptor.java
-Angle\:_%1$°_to_%2$°=Winkel: %1$° bis %2$°
-Spot_range\:_%1$_blocks=Spot-Reichweite: %1$ Blöcke
-Wireless_mode_of_lights_intended_to_pretend_wires_are_in_the_walls=Drahtloser Beleuchtungsmodus, bei dem davon ausgegangen wird, dass sich Leitungen in den Wänden befinden
-
-# src/main/java/mods/eln/sixnode/lampsocket/LampSocketElement.java
-Bulb=Glühbirne
-
-# src/main/java/mods/eln/sixnode/lampsocket/LampSocketGuiDraw.java
-Cable_slot_empty=Kabel-Slot leer
-Orientation\:_%1$°=Ausrichtung: %1$°
-Parallel=Parallel
-Serial=Seriell
-
 # src/main/java/mods/eln/sixnode/lampsupply/LampSupplyContainer.java
-Electrical_cable_slot\nBase_range_is_32_blocks.\nEach_additional_cable\nincreases_range_by_one.=Elektrik-Kabel-Slot\nBasisreichweite beträgt 32 Blöcke.\nJedes zusätzliche Kabel\nerhöht die Reichweite um eins.
+Cable_slot\nBase_range_is_32_blocks.\nEach_additional_cable\nincreases_range_by_one.=Cable slot\nBase range is 32 blocks.\nEach additional cable\nincreases range by one.
 
 # src/main/java/mods/eln/sixnode/lampsupply/LampSupplyDescriptor.java
 Capable_of_operating_3_light_channels.=Kann 3 Lichtkanäle betreiben.
@@ -511,7 +500,6 @@ The_thermal_simulator_doesn't_properly_manage_heat=Der Wärmesimulator verwaltet
 Thermic_power=Wärmeleistung
 
 # src/main/java/mods/eln/sixnode/thermalsensor/ThermalSensorContainer.java
-Cable_slot=Kabel-Slot
 
 # src/main/java/mods/eln/sixnode/thermalsensor/ThermalSensorDescriptor.java
 Can_measure\:=Kann messen:
@@ -893,7 +881,6 @@ RH\:=RF:
 Room_T\:=Raum-T:
 
 # src/main/kotlin/mods/eln/item/TurbineBladeDescriptor.kt
-Condition\:_%1$=Condition: %1$
 Nominal_Lifetime\:_%1$h=Nominal Lifetime: %1$h
 
 # src/main/kotlin/mods/eln/item/WireMachineItems.kt
@@ -921,12 +908,28 @@ Wire_Snips=Wire Snips
 # src/main/kotlin/mods/eln/item/electricalitem/ElectricalAxe.kt
 Cuts_down_trees._Right-click_to_make_it_act_like_a_regular_axe.=Fällt Bäume. Rechtsklick, um sie wie eine normale Axt zu verwenden.
 
-# src/main/kotlin/mods/eln/item/electricalitem/ElectricalLampItem.kt
+# src/main/kotlin/mods/eln/item/electricalitem/ElectricalFlashlightItem.kt
 State\:=Status:
 Stored_Energy\:_%1$J_(%2$%)=Gespeicherte Energie: %1$J (%2$%)
 
 # src/main/kotlin/mods/eln/item/electricalitem/ElectricalPickaxe.kt
 Opens_holes._Right-click_to_open_smaller_holes.=Macht Löcher. Rechtsklick für kleinere Löcher.
+
+# src/main/kotlin/mods/eln/item/lampitem/LampDescriptor.kt
+Current_lifetime\:_%1$h=Current lifetime: %1$h
+Nominal_brightness\:_%1$=Nominal brightness: %1$
+Nominal_lifetime\:_%1$h=Nominal lifetime: %1$h
+
+# src/main/kotlin/mods/eln/item/lampitem/LampItemSlot.kt
+Lamp_slot=Lampen-Slot
+
+# src/main/kotlin/mods/eln/item/lampitem/LampTechnology.kt
+carbon=carbon
+farming=farming
+fluorescent=fluorescent
+halogen=halogen
+incandescent=incandescent
+led=led
 
 # src/main/kotlin/mods/eln/mechanical/Clutch.kt
 Clutch_Pin=Clutch Pin
@@ -975,6 +978,7 @@ Rads/s_corresponding\nto_100%_output=rad/s entsprechend\n100% Ausgang
 # src/main/kotlin/mods/eln/mechanical/Turbines.kt
 %1$_input\:_%2$=%1$ Eingang: %2$
 Blade=Blade
+Life_Left=Lebensdauer
 Requires_a_turbine_blade_to_operate.=Requires a turbine blade to operate.
 Turbine_blade_slot=Turbine blade slot
 
@@ -991,12 +995,19 @@ mod.name=Electrical Age
 Cart_Energy\:_=Lorenenergie:
 
 # src/main/kotlin/mods/eln/registration/ItemRegistration.kt
-12V_Carbon_Incandescent_Light_Bulb.name=12V Carbon Incandescent Light Bulb
+120V_Carbon_Light_Bulb.name=120V Carbon Light Bulb
+120V_Farming_Light_Bulb.name=120V Farming Light Bulb
+120V_Fluorescent_Light_Bulb.name=120V Fluorescent Light Bulb
+120V_Halogen_Light_Bulb.name=120V Halogen Light Bulb
+120V_Incandescent_Light_Bulb.name=120V Incandescent Light Bulb
+120V_LED_Light_Bulb.name=120V LED Light Bulb
+12V_Carbon_Light_Bulb.name=12V Carbon Light Bulb
 12V_Farming_Light_Bulb.name=12V Farming Light Bulb
 12V_Fluorescent_Light_Bulb.name=12V Fluorescent Light Bulb
 12V_Halogen_Light_Bulb.name=12V Halogen Light Bulb
 12V_Incandescent_Light_Bulb.name=12V Incandescent Light Bulb
 12V_LED_Light_Bulb.name=12V LED Light Bulb
+240V_Carbon_Light_Bulb.name=240V Carbon Light Bulb
 240V_Copper_Heating_Element.name=240V Copper Heating Element
 240V_Farming_Light_Bulb.name=240V Farming Light Bulb
 240V_Fluorescent_Light_Bulb.name=240V Fluorescent Light Bulb
@@ -1129,9 +1140,6 @@ Silicon_Ingot.name=Siliziumbarren
 Silicon_Plate.name=Siliziumplatte
 Silicon_Wafer.name=Silizium-Wafer
 Silver_Brush.name=Silberner Pinsel
-Small_12V_Carbon_Incandescent_Light_Bulb.name=Small 12V Carbon Incandescent Light Bulb
-Small_12V_Fluorescent_Light_Bulb.name=Small 12V Fluorescent Light Bulb
-Small_12V_Incandescent_Light_Bulb.name=Small 12V Incandescent Light Bulb
 Small_240V_Copper_Heating_Element.name=Small 240V Copper Heating Element
 Small_240V_Iron_Heating_Element.name=Small 240V Iron Heating Element
 Small_240V_Tungsten_Heating_Element.name=Small 240V Tungsten Heating Element
@@ -1198,13 +1206,13 @@ tile.eln.EnergyConverter.name=Energie-Exportierer
 10A_Electrical_Breaker.name=10A Electrical Breaker
 10A_Lead_Fuse.name=10A Lead Fuse
 120V_Battery_Charger.name=120V Battery Charger
+120V_Emergency_Lamp.name=120V Emergency Lamp
 120V_Fast_Battery_Charger.name=120V Fast Battery Charger
 120V_Lamp_Supply.name=120V Lamp Supply
 125A_Electrical_Breaker.name=125A Electrical Breaker
 12V_Control_Relay_100A.name=12V Control Relay 100A
 12V_Control_Relay_20A.name=12V Control Relay 20A
 12V_Control_Relay_50A.name=12V Control Relay 50A
-12V_Emergency_Lamp.name=12V Emergency Lamp
 15A_Electrical_Breaker.name=15A Electrical Breaker
 15A_Lead_Fuse.name=15A Lead Fuse
 200A_Electrical_Breaker.name=200A Electrical Breaker
@@ -1355,6 +1363,7 @@ Amplifier.name=Verstärker
 Analog_Watch.name=Analoge Uhr
 Analog_vuMeter.name=Analoge Anzeige
 Blown_Lead_Fuse.name=Durchgebrannte Bleisicherung
+Classic_Lamp_Socket.name=Classic Lamp Socket
 Conduit.name=Leitungskabel
 Configurable_summing_unit.name=Konfigurierbare Summier-Einheit
 Copper_1/0_AWG_Cable_1000V.name=Copper 1/0 AWG Cable 1000V
@@ -1512,8 +1521,6 @@ Humidity_Sensor.name=Feuchtigkeitssensor
 Industrial_Data_Logger.name=Industrieller Datenlogger
 JK_Flip_Flop_Chip.name=JK Flip Flop Chip
 LED_vuMeter.name=LED-Pegelmesser
-Lamp_Socket_A.name=Lampenfassung A
-Lamp_Socket_B_Projector.name=Lampenfassung B Projektor
 Lead_Fuse_for_high_voltage_cables.name=Bleisicherung für Hochspannungskabel
 Lead_Fuse_for_low_voltage_cables.name=Bleisicherung für Niederspannungskabel
 Lead_Fuse_for_medium_voltage_cables.name=Bleisicherung für Mittelspannungskabel
@@ -1568,8 +1575,9 @@ Signal_Switch.name=Signalschalter
 Signal_Switch_with_LED.name=Signalschalter mit LED
 Signal_Trimmer.name=Signal-Trimmer
 Simple_Lamp_Socket.name=Einfache Lampenfassung
+Spot_Lamp_Socket.name=Spot Lamp Socket
 Standard_Alarm.name=Standardalarm
-Street_Light.name=Straßenlaterne
+Streetlight.name=Streetlight
 Suspended_Lamp_Socket.name=Hängende Lampenfassung
 Suspended_Lamp_Socket_(No_Swing).name=Hängende Lampenfassung (Kein Schwingen)
 Temperature_Probe.name=Temperatursonde
@@ -1739,6 +1747,8 @@ Battery_capacity\:=Batteriekapazität:
 Charging...=Lädt...
 Fully_charged=Vollgeladen
 Nominal_voltage\:=Nennspannung:
+Powered_by_Lamp_Supply=Betrieben über Lampenversorgung
+Specify_the_supply_channel=Versorgungskanal angeben
 is_charged_and_the_lamp_is_off._On_a_power_failure,=geladen und die Lampe ist aus. Bei einem Stromausfall
 the_lamp_turns_on_and_runs_on_batteries.=geht die Lampe an und läuft über Batterien.
 
@@ -1844,8 +1854,25 @@ Provides_an_electrical_signal\nfor_biome_relative_humidity.=Liefert ein elektris
 Ambient_temperature=Umgebungstemperatur
 Precipitation=Niederschlag
 
-# src/main/kotlin/mods/eln/sixnode/lampsocket/LampSlot.kt
-Lamp_slot=Lampen-Slot
+# src/main/kotlin/mods/eln/sixnode/lampsocket/LampSocketDescriptor.kt
+Angle\:_%1$°_to_%2$°=Winkel: %1$° bis %2$°
+Spot_range\:_%1$_blocks=Spot-Reichweite: %1$ Blöcke
+Wireless_mode_of_lights_is_intended_\nto_pretend_wires_are_in_the_walls.=Wireless mode of lights is intended \nto pretend wires are in the walls.
+
+# src/main/kotlin/mods/eln/sixnode/lampsocket/LampSocketElement.kt
+Bulb=Glühbirne
+Bulb_Life_Left=Bulb Life Left
+
+# src/main/kotlin/mods/eln/sixnode/lampsocket/LampSocketGui.kt
+Beam_orientation\:_%1$°=Beam orientation: %1$°
+Cable_slot_empty=Kabel-Slot leer
+Connected_to_%1$=Connected to %1$
+Grounded=Grounded
+Lamp_slot_empty=Lamp slot empty
+Powered_by_lamp_supply=Powered by lamp supply
+Specify_the_lamp_supply_channel=Specify the lamp supply channel
+This_currently_does_nothing.=This currently does nothing.
+Ungrounded=Ungrounded
 
 # src/main/kotlin/mods/eln/sixnode/mqttmeter/MqttEnergyMeterElement.kt
 Elapsed_time=Verstrichene Zeit
@@ -2005,15 +2032,17 @@ It_probably_works_if_you_apply_~200v_to_the_xmas_wireless_channel=Es funktionier
 Not_as_warm_as_it_could_be=Nicht so warm wie es sein könnte
 
 # src/main/kotlin/mods/eln/transparentnode/floodlight/FloodlightDescriptor.kt
-A_powerful_lamp_that_specializes_in\nthe_illumination_of_large_spaces.=Eine leistungsstarke Lampe, die auf die\nBeleuchtung großer Räume spezialisiert ist.
-Intended_for_120V_or_240V_bulb_families.=Intended for 120V or 240V bulb families.
+A_powerful_lamp_that_specializes_in\nthe_illumination_of_large_spaces.\nUses_inserted_light_bulbs.=A powerful lamp that specializes in\nthe illumination of large spaces.\nUses inserted light bulbs.
+Intended_for_120V_bulb_families.=Intended for 120V bulb families.
 Intended_for_240V_bulb_families.=Intended for 240V bulb families.
-Uses_inserted_light_bulbs.=Uses inserted light bulbs.
 
 # src/main/kotlin/mods/eln/transparentnode/floodlight/FloodlightElement.kt
 Bulb_1=Birne 1
 Bulb_1_Life_Left=Birne 1 Lebensdauer
 Bulb_2=Birne 2
 Bulb_2_Life_Left=Birne 2 Lebensdauer
-Power_Consumption=Leistungsverbrauch
-_Hours= Stunden
+
+# src/main/kotlin/mods/eln/transparentnode/floodlight/FloodlightGui.kt
+Beam_width\:_%1$°=Beam width: %1$°
+Horizontal_angle\:_%1$°=Horizontal angle: %1$°
+Vertical_angle\:_%1$°=Vertical angle: %1$°

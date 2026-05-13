@@ -1,9 +1,14 @@
 package mods.eln.sixnode.electricalcable
 
 import mods.eln.Eln
+import mods.eln.cable.CableRender
+import mods.eln.cable.CableRenderDescriptor
+import mods.eln.cable.CableRenderType
+import mods.eln.cable.CableRenderTypeMethodType
 import mods.eln.generic.GenericItemUsingDamageDescriptor
 import mods.eln.i18n.I18N.tr
 import mods.eln.item.BrushDescriptor
+import mods.eln.item.ItemMovingHelper
 import mods.eln.misc.Direction
 import mods.eln.misc.LRDU
 import mods.eln.misc.LRDUMask
@@ -11,7 +16,6 @@ import mods.eln.misc.Utils
 import mods.eln.misc.Utils.addChatMessage
 import mods.eln.misc.Utils.isPlayerUsingWrench
 import mods.eln.misc.Utils.plotAmpere
-import mods.eln.misc.Utils.plotValue
 import mods.eln.misc.Utils.plotVolt
 import mods.eln.misc.Utils.renderSubSystemWaila
 import mods.eln.misc.Utils.setGlColorFromDye
@@ -22,24 +26,19 @@ import mods.eln.misc.UtilsClient.enableBlend
 import mods.eln.misc.UtilsClient.enableLight
 import mods.eln.node.NodeBase
 import mods.eln.node.NodeConnection
-import mods.eln.node.six.SixNode
-import mods.eln.node.six.SixNodeDescriptor
-import mods.eln.node.six.SixNodeElementRender
-import mods.eln.node.six.SixNodeEntity
+import mods.eln.node.six.*
 import mods.eln.sim.ElectricalConnection
 import mods.eln.sim.ElectricalLoad
+import mods.eln.sim.IProcess
 import mods.eln.sim.ThermalLoad
 import mods.eln.sim.nbt.NbtElectricalLoad
 import mods.eln.sim.nbt.NbtThermalLoad
 import mods.eln.sim.process.heater.ElectricalLoadHeatThermalLoad
-import mods.eln.cable.CableRender
-import mods.eln.cable.CableRenderDescriptor
-import mods.eln.cable.CableRenderType
-import mods.eln.cable.CableRenderTypeMethodType
-import net.minecraft.client.renderer.RenderHelper
 import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.RenderHelper
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.entity.player.EntityPlayerMP
+import net.minecraft.inventory.IInventory
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.NBTTagCompound
 import net.minecraft.util.DamageSource
@@ -49,7 +48,7 @@ import org.lwjgl.opengl.GL11
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.util.UUID
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.floor
 
@@ -64,9 +63,80 @@ data class UtilityCablePalette(
     val conductorColors: IntArray
 )
 
+/**
+ * This interface is used to add support for custom-length utility cables to AutoAcceptInventoryProxy (right-click-to-
+ * insert) and the Config Copy Tool. SixNodeElementInventory and TransparentNodeElementInventory have been set up to
+ * implement this interface using the default cable length (1 meter). This automatically adds basic utility cable
+ * support to the above methods for all sixnode/transparentnode devices which already accept electrical/utility cables
+ * in their inventories. If different cable lengths are desired for specific devices, use the alternative constructors
+ * when instantiating the sixnode/transparentnode inventory classes. Note that a particular device must make use of the
+ * CableItemSlot class (within its container class) to fully support utility cables (only accept cables of a certain
+ * length when manually inserting from the GUI). See the lamp socket and lamp supply code for examples.
+ */
+interface IUtilityCableInventory {
+
+    val requiredCableLength: Double
+
+    companion object {
+        const val DEFAULT_REQUIRED_LENGTH = 1.0
+
+        /**
+         * Trims a length of cable from an existing spool of wire. Supports variable cable lengths - the destination
+         * inventory must extend the IUtilityCableInventory interface and define an expected cable length; otherwise
+         * this function will trim a default length of 1 meter of wire. Automatically updates the destination inventory
+         * (marks it as dirty) if a cable is added. Sets the stack size of the source spool to zero if its length drops
+         * to ~zero after trimming a wire segment. Updating the source inventory (that of the player) is not performed
+         * here - the calling code is expected to perform this duty, if needed. The calling code is also expected to
+         * check if the destination inventory is empty. Otherwise, this function will overwrite an existing item.
+         *
+         * @return `true` if a wire segment is successfully trimmed from the spool; `false` if the spool is too short
+         * or the function is called on a non-utility cable item
+         */
+        @JvmStatic
+        fun trimCable(srcItemStack: ItemStack, dstInventory: IInventory, dstIndex: Int): Boolean {
+            val srcCableDesc = Utils.getItemObject(srcItemStack) as? UtilityCableDescriptor ?: return false
+
+            val dstItemStack = srcCableDesc.newItemStack()
+            val existingCableLength = srcCableDesc.getRemainingLengthMeters(srcItemStack)
+            val requiredCableLength =
+                if (dstInventory is IUtilityCableInventory) dstInventory.requiredCableLength
+                else DEFAULT_REQUIRED_LENGTH
+
+            if (existingCableLength >= requiredCableLength) {
+                srcCableDesc.setRemainingLengthMeters(dstItemStack, requiredCableLength)
+                srcCableDesc.setRemainingLengthMeters(srcItemStack, existingCableLength - requiredCableLength)
+                if (abs(srcCableDesc.getRemainingLengthMeters(srcItemStack)) < UtilityCableDescriptor.LENGTH_METERS_EPSILON) srcItemStack.stackSize -= 1
+                dstInventory.setInventorySlotContents(dstIndex, dstItemStack)
+                dstInventory.markDirty()
+                return true
+            } else return false
+        }
+    }
+
+}
+
+/**
+ * This class is used with the Config Copy Tool for shuffling cable spools around between inventories.
+ */
+class UtilityCableItemMovingHelper(val cableDesc: UtilityCableDescriptor, val cableLength: Double) : ItemMovingHelper() {
+
+    override fun acceptsStack(stack: ItemStack?): Boolean {
+        return if (cableDesc.checkSameItemStack(stack)) Utils.getItemObject(stack) is UtilityCableDescriptor
+        else false
+    }
+
+    override fun newStackOfSize(items: Int): ItemStack {
+        val newItemStack = cableDesc.newItemStack(items)
+        val newItemDesc = Utils.getItemObject(newItemStack) as UtilityCableDescriptor
+        newItemDesc.setRemainingLengthMeters(newItemStack, cableLength)
+        return newItemStack
+    }
+
+}
+
 class UtilityCableDescriptor(
     name: String,
-    render: mods.eln.cable.CableRenderDescriptor,
+    render: CableRenderDescriptor,
     description: String,
     @JvmField val sizeLabel: String,
     @JvmField val metricSizeLabel: String,
@@ -86,6 +156,7 @@ class UtilityCableDescriptor(
         private const val creativeLengthMeters = 128.0
         private const val defaultMaterialMassKg = 10.0
         private const val placeLengthMeters = 1.0
+        const val LENGTH_METERS_EPSILON = 1e-6 // 1 micrometer
         private const val nbtLengthMeters = "utilityLengthMeters"
         private const val nbtUniqueId = "utilityLengthUid"
         private val registry = mutableListOf<UtilityCableDescriptor>()
@@ -240,7 +311,7 @@ class UtilityCableElement(
     sixNode: SixNode?,
     side: Direction?,
     descriptor: SixNodeDescriptor
-) : mods.eln.node.six.SixNodeElement(sixNode!!, side!!, descriptor) {
+) : SixNodeElement(sixNode!!, side!!, descriptor) {
 
     @JvmField
     val descriptor = descriptor as UtilityCableDescriptor
@@ -291,7 +362,7 @@ class UtilityCableElement(
             sixNodeElementDescriptor.getGhostGroup(side, front)!!.erase(sixNode!!.coordinate)
         }
         sixNode!!.dropInventory(inventory)
-        if (mods.eln.misc.Utils.mustDropItem(entityPlayer)) {
+        if (Utils.mustDropItem(entityPlayer)) {
             val scrapDescriptor = Eln.instance.wireScrapDescriptor
             val dropStack = scrapDescriptor?.createScrapStack(descriptor) ?: dropItemStack
             sixNode!!.dropItem(dropStack)
@@ -589,7 +660,7 @@ class UtilityCableElement(
         node.disconnect()
         val newElement = replacement.ElementClass
             .getConstructor(SixNode::class.java, Direction::class.java, SixNodeDescriptor::class.java)
-            .newInstance(node, side, replacement) as mods.eln.node.six.SixNodeElement
+            .newInstance(node, side, replacement) as SixNodeElement
         newElement.front = front
         node.sideElementList[side.int] = newElement
         node.sideElementIdList[side.int] = replacement.parentItemDamage
@@ -616,7 +687,7 @@ class UtilityCableElement(
             previous <= smokeThreshold && absoluteTemperatureCelsius > smokeThreshold ||
                 previous > smokeThreshold && absoluteTemperatureCelsius <= smokeThreshold
             )
-        val changedEnough = previous.isNaN() || kotlin.math.abs(absoluteTemperatureCelsius - previous) >= 10.0
+        val changedEnough = previous.isNaN() || abs(absoluteTemperatureCelsius - previous) >= 10.0
         if (changedEnough || crossedGlowThreshold || crossedSmokeThreshold) {
             needPublish()
             lastPublishedTemperatureCelsius = absoluteTemperatureCelsius
@@ -657,7 +728,7 @@ class UtilityCableElement(
         }
     }
 
-    private inner class UtilityCableFailureProcess : mods.eln.sim.IProcess {
+    private inner class UtilityCableFailureProcess : IProcess {
         override fun process(time: Double) {
             shockCooldown = (shockCooldown - time).coerceAtLeast(0.0)
             val absoluteTemperatureCelsius = thermalLoad.temperatureCelsius + getAmbientTemperatureCelsius()

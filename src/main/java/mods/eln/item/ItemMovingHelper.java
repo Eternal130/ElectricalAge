@@ -1,10 +1,11 @@
 package mods.eln.item;
 
 import mods.eln.misc.Utils;
+import mods.eln.sixnode.electricalcable.IUtilityCableInventory;
+import mods.eln.sixnode.electricalcable.UtilityCableDescriptor;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
@@ -37,6 +38,15 @@ public abstract class ItemMovingHelper {
                 ItemStack invStack = src.getStackInSlot(idx);
                 if(invStack == null) continue;
                 if(!acceptsStack(invStack)) continue;
+                if (Utils.getItemObject(invStack) instanceof UtilityCableDescriptor) {
+                    if (IUtilityCableInventory.trimCable(invStack, dst, dstSlot)) {
+                        if (invStack.stackSize == 0) src.setInventorySlotContents(idx, null);
+                        syncItemInSlot(src, idx);
+                        diff -= Math.min(invStack.stackSize, diff);
+                        Utils.println(String.format("IMH.m: moved %d into node", (desired - now) - diff));
+                        return; // trimCable automatically marks the destination inventory as dirty, if necessary
+                    } else continue;
+                }
                 int move = Math.min(invStack.stackSize, diff);
                 diff -= move;
                 invStack.stackSize -= move;

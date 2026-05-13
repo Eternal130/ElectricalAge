@@ -2,6 +2,7 @@ package mods.eln.sim.mna;
 
 import mods.eln.misc.Profiler;
 import mods.eln.misc.Utils;
+import mods.eln.metrics.MetricsSubsystem;
 import mods.eln.sim.mna.component.*;
 import mods.eln.sim.mna.misc.IDestructor;
 import mods.eln.sim.mna.misc.ISubSystemProcessFlush;
@@ -32,6 +33,10 @@ public class SubSystem {
     int stateCount;
     double[][] A;
     boolean singularMatrix;
+    private int singularMatrixCountSinceLastDrain = 0;
+    private int inversionCountSinceLastDrain = 0;
+    private long inversionTotalNanosecondsSinceLastDrain = 0L;
+    private long inversionMaximumNanosecondsSinceLastDrain = 0L;
 
     DD[][] AInvdata;
     double[] Idata;
@@ -122,15 +127,24 @@ public class SubSystem {
 
         //	org.apache.commons.math3.linear.
 
+        boolean captureMetrics = MetricsSubsystem.isSimulatorMetricsActive();
+        long inversionStartNanoseconds = captureMetrics ? System.nanoTime() : 0L;
         try {
             AInvdata = invertMatrix(A);
             singularMatrix = false;
+            if (captureMetrics) {
+                long inversionTimeNanoseconds = System.nanoTime() - inversionStartNanoseconds;
+                inversionCountSinceLastDrain++;
+                inversionTotalNanosecondsSinceLastDrain += inversionTimeNanoseconds;
+                if (inversionTimeNanoseconds > inversionMaximumNanosecondsSinceLastDrain) {
+                    inversionMaximumNanosecondsSinceLastDrain = inversionTimeNanoseconds;
+                }
+            }
         } catch (Exception e) {
             singularMatrix = true;
             AInvdata = null;
             if (stateCount > 1) {
-                int idx = 0;
-                idx++;
+                singularMatrixCountSinceLastDrain++;
                 Utils.println("//////////SingularMatrix////////////");
             }
         }
@@ -234,6 +248,23 @@ public class SubSystem {
     public void step() {
         stepCalc();
         stepFlush();
+    }
+
+    public void drainMnaMetrics(MnaStepMetricsAccumulator accumulator) {
+        if (singularMatrixCountSinceLastDrain != 0) {
+            accumulator.addSingular(singularMatrixCountSinceLastDrain);
+            singularMatrixCountSinceLastDrain = 0;
+        }
+        if (inversionCountSinceLastDrain != 0) {
+            accumulator.addInversions(
+                    inversionCountSinceLastDrain,
+                    inversionTotalNanosecondsSinceLastDrain,
+                    inversionMaximumNanosecondsSinceLastDrain
+            );
+            inversionCountSinceLastDrain = 0;
+            inversionTotalNanosecondsSinceLastDrain = 0L;
+            inversionMaximumNanosecondsSinceLastDrain = 0L;
+        }
     }
 
     public void stepCalc() {

@@ -37,10 +37,12 @@ import mods.eln.ghost.GhostManager;
 import mods.eln.ghost.GhostManagerNbt;
 import mods.eln.item.*;
 import mods.eln.item.electricalinterface.ItemEnergyInventoryProcess;
-import mods.eln.item.electricalitem.OreColorMapping;
-import mods.eln.item.electricalitem.PortableOreScannerItem.RenderStorage.OreScannerConfigElement;
+import mods.eln.item.lampitem.LampLists;
+import mods.eln.lightblock.LightBlock;
+import mods.eln.lightblock.LightBlockEntity;
 import mods.eln.misc.*;
 import mods.eln.mqtt.MqttManager;
+import mods.eln.metrics.MetricsSubsystem;
 import mods.eln.node.NodeBlockEntity;
 import mods.eln.node.NodeManager;
 import mods.eln.node.NodeManagerNbt;
@@ -50,6 +52,7 @@ import mods.eln.node.transparent.*;
 import mods.eln.ore.OreBlock;
 import mods.eln.ore.OreDescriptor;
 import mods.eln.ore.OreItem;
+import mods.eln.ore.OreScannerManager;
 import mods.eln.packets.*;
 import mods.eln.registration.ItemRegistration;
 import mods.eln.registration.SingleNodeRegistration;
@@ -68,8 +71,6 @@ import mods.eln.sixnode.PortableNaNDescriptor;
 import mods.eln.sixnode.currentcable.CurrentCableDescriptor;
 import mods.eln.sixnode.electricalcable.ElectricalCableDescriptor;
 import mods.eln.sixnode.electricaldatalogger.DataLogsPrintDescriptor;
-import mods.eln.sixnode.lampsocket.LightBlock;
-import mods.eln.sixnode.lampsocket.LightBlockEntity;
 import mods.eln.sixnode.lampsupply.LampSupplyElement;
 import mods.eln.sixnode.modbusrtu.ModbusTcpServer;
 import mods.eln.sixnode.tutorialsign.TutorialSignElement;
@@ -112,8 +113,11 @@ import static mods.eln.i18n.I18N.TR;
 import static mods.eln.i18n.I18N.TR_GROUP;
 import static mods.eln.i18n.I18N.tr;
 
-@Mod(modid = Eln.MODID, name = Eln.NAME, version = Tags.VERSION, dependencies = "after:CoFHCore;after:CoFHAPI;" +
-        "after:CoFHAPI|energy")
+@Mod(
+        modid = Eln.MODID,
+        name = Eln.NAME,
+        version = Tags.VERSION,
+        dependencies = "required-after:CoFHCore")
 public class Eln {
     @Instance("Eln")
     public static Eln instance;
@@ -124,7 +128,7 @@ public class Eln {
     public final static String NAME = "Electrical Age - jrddunbr's build";
     public final static String UPDATE_URL = "https://github.com/age-series/ElectricalAge/releases";
     public final static String[] AUTHORS = {"Dolu1990", "jrddunbr", "Baughn", "Grissess", "Caeleron", "Omega_Haxors",
-     "lambdaShade", "cm0x4D", "metc"};
+     "lambdaShade", "cm0x4D", "metc", "TheBuilderBoy76"};
     public static final String channelName = "miaouMod";
     public static final double solarPanelBasePower = 65.0;
     public static final byte packetPlayerKey = 14;
@@ -138,9 +142,8 @@ public class Eln {
     public static final byte packetServerToClientInfo = 22;
     public static final byte packetFalstadImport = 23;
     public static final Obj3DFolder obj = new Obj3DFolder();
-    public static final ArrayList<OreScannerConfigElement> oreScannerConfig = new ArrayList<OreScannerConfigElement>();
     public static final double gateInputCurrent = 0.00005;
-    public static final double gateOutputCurrent = 0.005;
+    public static final double gateOutputCurrent = 0.100;
     public static final double LVU = 50;
     public static final double MVU = 200;
     public static final double HVU = 800;
@@ -197,6 +200,12 @@ public class Eln {
     public static OreItem oreItem;
     public static PortableNaNDescriptor portableNaNDescriptor = null;
     public static CableRenderDescriptor stdPortableNaN = null;
+    public static boolean mqttEnabled = false;
+    public static boolean simMetricsEnabled = false;
+    public static String simMetricsMqttServer = "";
+    public static String simMetricsId = "server";
+    public static int simMetricsPublishIntervalTicks = 20;
+    public static boolean debugEnabled = false;
     public static SiliconWafer siliconWafer;
     public static Transistor transistor;
     public static Thermistor thermistor;
@@ -330,6 +339,7 @@ public class Eln {
         config.writeExampleFile();
         FuelRegistry.init(event.getSuggestedConfigurationFile());
         MqttManager.init();
+        MetricsSubsystem.refreshFromConfig();
 
         eventChannel = NetworkRegistry.INSTANCE.newEventDrivenChannel(channelName);
 
@@ -410,6 +420,8 @@ public class Eln {
         oreItem = (OreItem) Item.getItemFromBlock(oreBlock);
 
         SixNode.sixNodeCacheList.add(new SixNodeCacheStd());
+
+        LampLists.translateLampTypes(); // This MUST be called before block/item registration!
 
         SingleNodeRegistration.INSTANCE.registerSingle();
         SixNodeRegistration.INSTANCE.registerSix();
@@ -540,6 +552,7 @@ public class Eln {
         LampSupplyElement.channelMap.clear();
         WirelessSignalTxElement.channelMap.clear();
         MqttManager.shutdown();
+        MetricsSubsystem.shutdown();
     }
 
     @EventHandler
@@ -585,7 +598,7 @@ public class Eln {
             ServerCommandManager manager = (ServerCommandManager) command;
             manager.registerCommand(new ElnConsoleCommands());
         }
-        regenOreScannerFactors();
+        OreScannerManager.regenOreScannerFactors();
         BiomeClimateService.auditMissingBiomeProfilesAtStartup();
     }
 
@@ -600,48 +613,6 @@ public class Eln {
     }
     public double VVP() {
         return 15000 * config.getDoubleOrElse("balance.cables.powerFactor", 1.0);
-    }
-
-    public void regenOreScannerFactors() {
-        OreColorMapping.INSTANCE.updateColorMapping();
-
-        oreScannerConfig.clear();
-
-        if (config.getBooleanOrElse("tools.xrayScanner.addOtherModOreToScan", true)) {
-            for (String name : OreDictionary.getOreNames()) {
-                if (name == null) continue;
-                if (name.startsWith("ore")) {
-                    for (ItemStack stack : OreDictionary.getOres(name)) {
-                        int id = Utils.getItemId(stack) + 4096 * stack.getItem().getMetadata(stack.getItemDamage());
-                        boolean find = false;
-                        for (OreScannerConfigElement c : oreScannerConfig) {
-                            if (c.getBlockKey() == id) {
-                                find = true;
-                                break;
-                            }
-                        }
-
-                        if (!find) {
-                            Utils.println(id + " added to xRay (other mod)");
-                            oreScannerConfig.add(new OreScannerConfigElement(id, 0.15f));
-                        }
-                    }
-                }
-            }
-        }
-
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.coal_ore), 5 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.iron_ore), 15 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.gold_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.lapis_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.redstone_ore), 40 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.diamond_ore), 100 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(Blocks.emerald_ore), 40 / 100f));
-
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (1 << 12), 10 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (4 << 12), 20 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (5 << 12), 20 / 100f));
-        oreScannerConfig.add(new OreScannerConfigElement(Block.getIdFromBlock(oreBlock) + (6 << 12), 20 / 100f));
     }
 
     private void updateCreativeTabIcons() {

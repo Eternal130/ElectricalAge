@@ -4,9 +4,12 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import mods.eln.Eln
+import mods.eln.metrics.MetricsSubsystem
 import mods.eln.Other
-import mods.eln.item.LampLists
 import mods.eln.item.TurbineBladeLists
+import mods.eln.item.lampitem.BoilerplateLampData
+import mods.eln.item.lampitem.LampLists
 import mods.eln.misc.Utils
 import java.io.File
 import java.io.FileReader
@@ -53,6 +56,7 @@ class JsonConfig @JvmOverloads constructor(
     private val pathComments = linkedMapOf<String, String>()
     private val groupComments = linkedMapOf<String, String>()
     private val specs = if (includeDefaultSpecs) buildSpecs().toMutableList() else mutableListOf()
+    private val mapPaths = mutableSetOf<String>()
 
     private fun registerStaticComments() {
         groupComments["integrations"] = "Cross-mod integrations and external protocol bridges."
@@ -78,6 +82,10 @@ class JsonConfig @JvmOverloads constructor(
         spec(path = "integrations.modbus.enabled", defaultValue = false, comment = "Enable Modbus RTU."),
         spec(path = "integrations.modbus.port", defaultValue = 1502, comment = "TCP port for Modbus RTU."),
         spec(path = "integrations.mqtt.enabled", defaultValue = false, comment = "Enable MQTT devices. Server endpoints live in config/eln/mqtt.json."),
+        spec(path = "integrations.mqtt.simMetrics.enabled", defaultValue = false, comment = "Publish simulator MNA metrics to MQTT."),
+        spec(path = "integrations.mqtt.simMetrics.server", defaultValue = "", comment = "MQTT server name in config/eln/mqtt.json used for simulator metrics."),
+        spec(path = "integrations.mqtt.simMetrics.id", defaultValue = "server", comment = "Topic ID used under eln/sim/<id>/... for simulator metrics."),
+        spec(path = "integrations.mqtt.simMetrics.publishIntervalTicks", defaultValue = 20, comment = "Simulator ticks to aggregate before MQTT publish. Higher values reduce overhead."),
         spec(path = "integrations.computerProbe.enabled", defaultValue = true, comment = "Enable the OC/CC to Eln computer probe."),
         spec(path = "integrations.energyExporter.enabled", defaultValue = true, comment = "Enable the Eln energy exporter."),
         spec(path = "integrations.oredict.tungstenEnabled", defaultValue = false, comment = "Use shared ore dictionary entries for tungsten."),
@@ -129,10 +137,28 @@ class JsonConfig @JvmOverloads constructor(
         spec(path = "worldgen.ores.tungsten.enabled", defaultValue = true),
         spec(path = "worldgen.ores.cinnabar.enabled", defaultValue = true),
         spec(path = "machines.fuelGenerator.tankCapacitySecondsAtNominalPower", defaultValue = 20.0 * 60.0),
-        spec(path = "machines.heatFurnace.consumeFuel", defaultValue = false, comment = "Controls whether heat furnaces consume fuel."),
-        spec(path = "tools.xrayScanner.addOtherModOreToScan", defaultValue = true),
+        spec(path = "machines.heatFurnace.consumeFuel", defaultValue = true, comment = "Controls whether heat furnaces consume fuel."),
+        spec(path = "tools.xrayScanner.autoDiscoverOreDictionaryOres", defaultValue = true, comment = "Auto-discover ores from the Ore Dictionary that are not in oreFactors."),
         spec(path = "tools.xrayScanner.rangeBlocks", defaultValue = 5.0, comment = "X-ray scanner range in blocks. Intended range is 4 to 10."),
         spec(path = "tools.xrayScanner.canBeCrafted", defaultValue = true),
+        spec(path = "tools.xrayScanner.autoDiscoveryOreFactor", defaultValue = 0.15, comment = "Default factor for auto-discovered ores not listed in oreFactors."),
+        spec(
+            path = "tools.xrayScanner.oreFactors",
+            defaultValue = linkedMapOf(
+                "minecraft:coal_ore" to 0.05,
+                "minecraft:iron_ore" to 0.15,
+                "minecraft:gold_ore" to 0.40,
+                "minecraft:lapis_ore" to 0.40,
+                "minecraft:redstone_ore" to 0.40,
+                "minecraft:diamond_ore" to 1.00,
+                "minecraft:emerald_ore" to 0.40,
+                "Eln:Eln.Ore:1" to 0.10,
+                "Eln:Eln.Ore:4" to 0.20,
+                "Eln:Eln.Ore:5" to 0.20,
+                "Eln:Eln.Ore:6" to 0.20
+            ),
+            comment = "Ore scanner detection factors. Keys with ':' are block references (modid:name or modid:name:meta), keys without ':' are OreDictionary names. The ELN ores at the top are, in order: Copper Ore, Lead Ore, Tungsten Ore, and Cinnabar Ore."
+        ),
         spec(path = "simulation.electrical.frequency", defaultValue = 20.0, comment = "Set to a clean divisor of 20."),
         spec(path = "simulation.electrical.interSystemOverSampling", defaultValue = 50, comment = "Avoid setting this below 50."),
         spec(path = "simulation.thermal.frequency", defaultValue = 400.0, comment = "Thermal simulation update frequency."),
@@ -161,6 +187,7 @@ class JsonConfig @JvmOverloads constructor(
             registerStaticComments()
         }
         registerSpecComments()
+        populateMapPaths()
     }
 
     fun load() {
@@ -211,7 +238,7 @@ class JsonConfig @JvmOverloads constructor(
     fun loadConfig() {
         load()
 
-        for (lampData in LampLists.lampTechnologyList) lampData.loadConfig()
+        LampLists.loadAllLampConfigs()
         for (bladeData in TurbineBladeLists.bladeConfigList) bladeData.loadConfig()
 
         val analyticsEnabled = getBooleanOrElse("analytics.enabled", true)
@@ -225,6 +252,13 @@ class JsonConfig @JvmOverloads constructor(
         Other.wattsToEu = getDoubleOrElse("balance.integrationConversion.wattsToEu", 1.0 / 3.0)
         Other.wattsToOC = getDoubleOrElse("balance.integrationConversion.wattsToOc", 1.0 / 3.0 / 2.5)
         Other.wattsToRf = getDoubleOrElse("balance.integrationConversion.wattsToRf", 1.0 / 3.0 * 4)
+        Eln.mqttEnabled = getBooleanOrElse("integrations.mqtt.enabled", false)
+        Eln.simMetricsEnabled = getBooleanOrElse("integrations.mqtt.simMetrics.enabled", false)
+        Eln.simMetricsMqttServer = getStringOrElse("integrations.mqtt.simMetrics.server", "")
+        Eln.simMetricsId = getStringOrElse("integrations.mqtt.simMetrics.id", "server")
+        Eln.simMetricsPublishIntervalTicks = max(1, getIntOrElse("integrations.mqtt.simMetrics.publishIntervalTicks", 20))
+        Eln.debugEnabled = getBooleanOrElse("debug.logging.enabled", false)
+        MetricsSubsystem.refreshFromConfig()
 
         setRuntimeValue(
             "runtime.items.batteries.standardHalfLifeTicks",
@@ -272,12 +306,47 @@ class JsonConfig @JvmOverloads constructor(
         save()
     }
 
+    /**
+     * Wildcard config paths are only possible if the parent paths contain at least three fields (example: "xx.yy.zz").
+     * In this example, a wildcard path of the form "xx.*.zz" is only generated if at least two paths "xx.yy1.zz" and
+     * "xx.yy2.zz" exist. Otherwise, a wildcard path is unnecessary. Note that wildcard paths can only be generated for
+     * the second-to-last field in an existing path (in other words, the wildcard path "aa.*.cc.dd" is not possible).
+     */
+    private fun populateWildcardPathEntries(): List<String> {
+        val existingKeys = values.keys.sorted().toMutableList()
+        val possibleWildcardKeys = mutableListOf<String>()
+
+        existingKeys.forEach {
+            // Only proceed if path has more than one field
+            if (it.lastIndexOf(".") != -1) {
+                // Pick off the final field of the path
+                val suffix = it.substring(it.lastIndexOf(".")..it.lastIndexOf(it.last()))
+                val itNoSuffix = it.removeSuffix(suffix)
+
+                // Only proceed if more than one field remains in the path
+                if (itNoSuffix.lastIndexOf(".") != -1) {
+                    // Pick off the second-to-last field of the path
+                    val wildcardCandidate = itNoSuffix.substring(itNoSuffix.lastIndexOf(".")..itNoSuffix.lastIndexOf(itNoSuffix.last()))
+                    val prefix = itNoSuffix.removeSuffix(wildcardCandidate)
+
+                    // Concatenate the first field(s) and the last field, replacing the second-to-last field with the wildcard symbol (*)
+                    possibleWildcardKeys.add("${prefix}.*${suffix}")
+                }
+            }
+        }
+
+        // This expression sorts the list of possible wildcard paths and counts duplicates. Wildcard paths are only
+        // added to the final list of all paths if they occur more than once (otherwise they are pointless to have).
+        possibleWildcardKeys.groupingBy { it }.eachCount().forEach { if (it.value > 1) existingKeys.add(it.key) }
+        return existingKeys.sorted()
+    }
+
     fun listPaths(prefix: String? = null): List<String> {
         populateDefaults()
         val normalizedPrefix = prefix?.trim()?.takeIf { it.isNotEmpty() }
-        return values.keys
-            .sorted()
-            .filter { normalizedPrefix == null || it.startsWith(normalizedPrefix, ignoreCase = true) }
+
+        // Path list with wildcards is presorted
+        return populateWildcardPathEntries().filter { normalizedPrefix == null || it.startsWith(normalizedPrefix, ignoreCase = true) }
     }
 
     fun readPath(path: String): Any? {
@@ -327,6 +396,9 @@ class JsonConfig @JvmOverloads constructor(
             pathComments.remove(canonicalPath)
         }
         values.putIfAbsent(canonicalPath, defaultValue)
+        if (defaultValue is Map<*, *>) {
+            mapPaths.add(canonicalPath)
+        }
         clearCollectionCaches()
     }
 
@@ -379,6 +451,13 @@ class JsonConfig @JvmOverloads constructor(
         populateDefaults()
         val canonicalPath = path.trim()
         val existing = values[canonicalPath] ?: throw IllegalArgumentException("Unknown config path '$canonicalPath'")
+
+        // Prevent propagation of invalid lamp life values to the config file
+        if (canonicalPath.startsWith("lighting.lamps") && canonicalPath.contains("nominalLifeInHours")) {
+            val formattedValue = parseRawValue(rawValue, 0.0) as Double // Second argument can be any double
+            if (!BoilerplateLampData.isValidNominalLife(formattedValue)) return "lighting.lamps"
+        }
+
         values[canonicalPath] = parseRawValue(rawValue, existing)
         save()
         loadConfig()
@@ -404,6 +483,13 @@ class JsonConfig @JvmOverloads constructor(
         if (matchedPaths.isEmpty()) {
             throw IllegalArgumentException("No config paths matched '$canonicalPattern'")
         }
+
+        // Prevent propagation of invalid lamp life values to the config file
+        if (canonicalPattern.startsWith("lighting.lamps") && canonicalPattern.contains("nominalLifeInHours")) {
+            val formattedValue = parseRawValue(rawValue, 0.0) as Double // Second argument can be any double
+            if (!BoilerplateLampData.isValidNominalLife(formattedValue)) return listOf("lighting.lamps")
+        }
+
         matchedPaths.forEach { path ->
             val existing = values.getValue(path)
             values[path] = parseRawValue(rawValue, existing)
@@ -509,6 +595,24 @@ class JsonConfig @JvmOverloads constructor(
     }
 
     /**
+     * Reads a map-valued config entry whose keys are free-form strings (e.g. block references)
+     * and whose values are doubles. Returns an empty map if the path is missing or not a map.
+     */
+    fun getStringDoubleMap(path: String): LinkedHashMap<String, Double> {
+        populateDefaults()
+        val canonicalPath = path.trim().trim('.')
+        val value = values[canonicalPath]
+        if (value is Map<*, *>) {
+            val result = linkedMapOf<String, Double>()
+            for ((k, v) in value) {
+                if (k is String) result[k] = asDouble(v, 0.0)
+            }
+            return result
+        }
+        return linkedMapOf()
+    }
+
+    /**
      * Reads a string config value from the given path, throwing [IllegalArgumentException] with [message] if missing.
      */
     @Suppress("unused")
@@ -593,9 +697,24 @@ class JsonConfig @JvmOverloads constructor(
         for ((key, value) in obj.entrySet()) {
             if (key.startsWith("_comment") || key == "schemaVersion") continue
             val currentPath = prefix + key
+            val flatPath = joinPath(currentPath)
             when {
+                mapPaths.contains(flatPath) && value.isJsonObject -> {
+                    val map = linkedMapOf<String, Double>()
+                    for ((mapKey, mapVal) in value.asJsonObject.entrySet()) {
+                        if (mapKey.startsWith("_comment")) continue
+                        if (mapVal.isJsonPrimitive) {
+                            val primitive = mapVal.asJsonPrimitive
+                            map[mapKey] = when {
+                                primitive.isNumber -> primitive.asDouble
+                                else -> primitive.asString.toDoubleOrNull() ?: 0.0
+                            }
+                        }
+                    }
+                    values[flatPath] = map
+                }
                 value.isJsonObject -> flattenJson(value.asJsonObject, currentPath)
-                value.isJsonPrimitive -> values[joinPath(currentPath)] = primitiveToAny(value)
+                value.isJsonPrimitive -> values[flatPath] = primitiveToAny(value)
             }
         }
     }
@@ -717,8 +836,8 @@ class JsonConfig @JvmOverloads constructor(
         }
         if (includeDefaultSpecs) {
             for (lamp in LampLists.lampTechnologyList) {
-                defaults["lighting.lamps.${lamp.lampType}.nominalLifeHours"] = lamp.nominalLifeInHours
-                defaults["lighting.lamps.${lamp.lampType}.infiniteLifeEnabled"] = lamp.infiniteLifeEnabled
+                defaults[lamp.nominalLifePath] = lamp.nominalLifeInHours
+                defaults[lamp.infiniteLifePath] = lamp.infiniteLifeEnabled
             }
             for (blade in TurbineBladeLists.bladeConfigList) {
                 defaults["items.turbineBlades.${blade.tierName}.nominalLifeHours"] = blade.nominalLifeInHours
@@ -733,6 +852,17 @@ class JsonConfig @JvmOverloads constructor(
             is Boolean -> parent.addProperty(key, value)
             is Int -> parent.addProperty(key, value)
             is Double -> parent.addProperty(key, value)
+            is Map<*, *> -> {
+                val obj = JsonObject()
+                for ((mapKey, mapVal) in value) {
+                    if (mapKey !is String) continue
+                    when (mapVal) {
+                        is Number -> obj.addProperty(mapKey, mapVal)
+                        else -> obj.addProperty(mapKey, mapVal?.toString() ?: "")
+                    }
+                }
+                parent.add(key, obj)
+            }
             else -> parent.addProperty(key, value.toString())
         }
     }
@@ -762,6 +892,14 @@ class JsonConfig @JvmOverloads constructor(
         return Regex("^$regex$")
     }
 
+    private fun populateMapPaths() {
+        for (spec in specs) {
+            if (spec.defaultValue is Map<*, *>) {
+                mapPaths.add(joinPath(spec.path))
+            }
+        }
+    }
+
     private fun registerSpecComments() {
         for (spec in specs) {
             val path = joinPath(spec.path)
@@ -781,6 +919,10 @@ class JsonConfig @JvmOverloads constructor(
         "integrations.modbus.enabled" -> listOf(LegacyKey("modbus", "enable"))
         "integrations.modbus.port" -> listOf(LegacyKey("modbus", "port"))
         "integrations.mqtt.enabled" -> listOf(LegacyKey("mqtt", "enable"))
+        "integrations.mqtt.simMetrics.enabled" -> listOf(LegacyKey("mqtt", "simMetricsEnable"))
+        "integrations.mqtt.simMetrics.server" -> listOf(LegacyKey("mqtt", "simMetricsServer"))
+        "integrations.mqtt.simMetrics.id" -> listOf(LegacyKey("mqtt", "simMetricsId"))
+        "integrations.mqtt.simMetrics.publishIntervalTicks" -> listOf(LegacyKey("mqtt", "simMetricsPublishIntervalTicks"))
         "integrations.computerProbe.enabled" -> listOf(LegacyKey("compatibility", "ComputerProbeEnable"))
         "integrations.energyExporter.enabled" -> listOf(LegacyKey("compatibility", "ElnToOtherEnergyConverterEnable"))
         "integrations.oredict.tungstenEnabled" -> listOf(LegacyKey("dictionary", "tungsten"))
@@ -832,7 +974,7 @@ class JsonConfig @JvmOverloads constructor(
         "worldgen.ores.cinnabar.enabled" -> listOf(LegacyKey("mapgenerate", "cinnabar"))
         "machines.fuelGenerator.tankCapacitySecondsAtNominalPower" -> listOf(LegacyKey("fuelGenerator", "tankCapacityInSecondsAtNominalPower"))
         "machines.heatFurnace.consumeFuel" -> listOf(LegacyKey("heatFurnace", "heatFurnaceConsumesFuel"))
-        "tools.xrayScanner.addOtherModOreToScan" -> listOf(LegacyKey("xrayscannerconfig", "addOtherModOreToXRay"))
+        "tools.xrayScanner.autoDiscoverOreDictionaryOres" -> listOf(LegacyKey("xrayscannerconfig", "addOtherModOreToXRay"))
         "tools.xrayScanner.rangeBlocks" -> listOf(LegacyKey("xrayscannerconfig", "rangeInBloc"))
         "tools.xrayScanner.canBeCrafted" -> listOf(LegacyKey("xrayscannerconfig", "canBeCrafted"))
         "simulation.electrical.frequency" -> listOf(LegacyKey("simulation", "electricalFrequency"), LegacyKey("simulation", "electricalFrequancy"))
